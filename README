@@ -1,5 +1,5 @@
 
-Resources-1.02
+Resources-1.03
 ===============
 
 
@@ -25,6 +25,7 @@ the following
 	% tar zxvf Resources-1.02.tar.gz
 	% cd Resources-1.02
 	% perl Makefile.PL
+	% make test
 	% make install
 
 See the ExtUtils::MakeMaker manpage for custom installation.

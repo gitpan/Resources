@@ -3,6 +3,9 @@
 #
 # Filename: Resources.pm
 # Author: Francesco Callari (franco@cim.mcgill.ca)
+# Created: Wed May 31 17:55:21 1995
+# Version: $Id: 
+#    Resources.pm,v 0.1 1995/10/19 02:49:43 franco Exp franco $
 
 
 =head1 NAME 
@@ -246,7 +249,7 @@ use FileHandle;
 #
 use vars qw( $VERSION %Resources $NAME $Value $Doc $Loaded $Merged );
 
-$VERSION = "1.01";
+$VERSION = "1.03";
 
 $Value=0, $Doc=1, $Loaded=2, $Merged=3; # Indices in resource value
 
@@ -361,6 +364,7 @@ sub new {
    unless ($resfile && $resfile eq "_RES_NODEFAULTS") {
       # Must make sure this is not overridden by a wildcard
       $res->{Wilds}->{'.*resources\.updates'} = [0];
+      $res->{Res}->{'resources.updates'}->[$Value] = 0;
       
       # Get appclass without extensions
       if (($app = $Resources{'resources.appclass'}->[$Value]) =~ /\./) {
@@ -602,7 +606,7 @@ sub merge {
 	    unshift(@tops, $topclass);
 	 }
       }
-      shift(@tops) if @tops && $tops[0] =~ /main/o; # get rid of main
+      shift(@tops) if $tops[0] =~ /main/o; # get rid of main
    }
    unshift(@tops, lc($res->{Res}->{'resources.appclass'}->[$Value]))
       if $res->valbyname('resources.mergeclass');
@@ -1171,10 +1175,9 @@ Provides dynamical resource editing of a Resource object via an external
 editor program. Only resource names and values can be edited (anyway, what is
 the point of editing a resource comment on the fly?).
 
-The environment variables $ENV{RESEDITOR}, the resource "resouces.editor", the
-environment variables $ENV{VISUAL} and $ENV{EDITOR} are looked up, in this
-very order, to find the editor program. Defaults to B</bin/vi> if none is
-found.
+The environment variables $ENV{RESEDITOR} and the resource "resouces.editor",
+are looked up, in this very order, to find the editor program. Defaults to
+B</bin/vi> if none is found.
 
 The editor buffer is initialized in the same format of a resource file, with
 the resource names alphabetically ordered, and the resource documentation
@@ -1204,15 +1207,9 @@ sub edit {
 
    if ($p = $ENV{RESEDITOR}) {
       $editor = $p;
-   } elsif ($p = $res->valbyname("resources.editor")) {
+   } else ($p = $res->valbyname("resources.editor")) {
       $editor = $p;
-   } elsif ($p = $ENV{VISUAL}) {
-      $editor = $p;
-   } elsif ($p = $ENV{EDITOR}) {
-      $editor = $p;
-   } else {
-      $editor='/bin/vi';
-   }
+   } 
 
    $tmpfil = ($res->valbyname("resources.tmpfil") || "/tmp/resedit$$.txt");
 
@@ -1227,10 +1224,16 @@ sub edit {
    $status = system("$editor $tmpfil");
    return 0 if $status>>8; # Editor failed
 
-   $newres = new Resources() || undef;
-   $newres->load($tmpfil, "replace", $nonew) || undef($newres);
+   $newres = new Resources("_RES_NODEFAULTS") || undef;
+   $newres->load($tmpfil, $nonew) || undef($newres);
    unlink($tmpfil);
 
+   for $p ($newres->names()) {
+      if (exists($res->{Res}->{$p}) && defined($res->{Res}->{$p}->[$Doc])) {
+	 $newres->{Res}->{$p}->[$Doc] = $res->{Res}->{$p}->[$Doc];
+      }
+   }
+   ++$newres->{Res}->{'resources.updates'}->[$Value];
    return $newres;
 }
 
@@ -1665,106 +1668,90 @@ Boolean. True if the write method should output in POD format.
 
 =head1 EXAMPLES
 
-Here is a more complex example of hyerarchical inheritance of resources.
-Package HotDog is subclassed from Junk and Food. The subclass has defaults for
-two resources defined by the base classes ("food.edible" and "junk.germs"),
-and their values will override the base class defaults. 
+Here is an example of resource inheritance.
+HotDog is a subclass of Food, and has a member Wiener whichi happens to be a
+Food as well. 
+
+The subclass has defaults for two resources defined by the base classes
+("edible" and "wiener.mustard"), and their values will override the base
+class defaults.
 
 Remember that after merging all resources names are prefixed with the current
 class name.
 
    use Resources;
    package Food;
-   %FoodDefaults = ( edible => "Sure" );
+   %Resources = ( 
+     edible => [1, "Can it be eaten."], 
+     tasty  => ["sort_of",  "D'ya like it?"],
+   );
    
    sub new {
-      my ($pack, $res) = @_;
-      $res = new Resources unless $resources;
-      $res->merge(\%FoodDefaults) || die ("can't merge defaults");
+      my ($type, $res) = @_;
+      $res || $res =  new Resources || (return undef);
+      $res->merge($type) || die ("can't merge defaults");
        
-      my $food= bless {};
+      my $food= bless({}, type);
       $food->{Edible} = $res->valbyclass("edible");
+      $food->{Tasty}  = $res->valbyclass("tasty");
       # Use valbyclass so a subclass like HotDog can change this by its
       # defaults.   
    }
  
    # A Food method to say if it can be eaten.
-   sub eat { 
+   sub eatok { 
       my $food=shift; 
       return $food->{Edible}; 
    }
 
-   package HotDog;
-   use Junk;
-   use Food;
-   use Carp;
-   @ISA = qw( Junk Food );
+   package Wiener;
+   @ISA = qw( Food );
+   %Resources = (
+        tasty => ["very"], # this overrides a base class default
+        mustard => ["plenty", "How much yellow stuff?"],
+   );
+   # Nothing else: all methods are inherited from the base class.
 
-   %HotDogDefaults = 
-      (
-       taste         => "Yuck!",
-       meatcolor     => "Cadaveric",
-       stinks        => 1,
-       'food.edible' => "Perhaps", # Quotes needed in these 
-       'junk.germs'  => "Amoeba"   #    names because of the dots
-      );
+   package HotDog;
+   @ISA = qw( Food );
+
+   %Resources = (
+       edible    => [0],
+       tasty     => ["yuck!"],
+       'wiener.mustard' => ["none"], # To override member class default.
+   );
 
    sub new {
-      my ($package, $res) = @_;
+      my ($type, $res) = @_;
       
-      $res = new Resources unless $resources;
-      $res->merge(\%HotDogDefaults) || die ("can't merge defaults");
+      $res || $res =  new Resources || (return undef);
+      $res->merge($type) || die ("can't merge defaults");
 	       
-      my $food   = new Food ($res); # Override Food's edible.
-      my $junk   = new Junk ($res); # Override Junks's germs.
-      my $hd = bless { %{food}, %{junk} }; # Merge and subclass.
-
-      $hd->{Meatcolor} = $res->valbyclass("meatcolor");
-      # Same reason as above
-
+      my $hd = bless(new Food ($res), $type);
+      $hd->{Wien} = new Wiener ($res);
       return $hd;
    }
 
-   # A HotDog method to get a taste via resources
-   sub taste { 
-      my ($hd, $res) = @_; 
-      print $res->valbyname("hotdog.taste");
+   # All tastes of hotdog
+   sub tastes {
+      my $hd = shift;
+      return ($hd->{Tasty}, $hd->{Wien}->{Tasty});
    }
-
+   
    package main;
    # Whatever
    #
    $res = new Resources("AppDefltFile") || die;
    $snack = new HotDog($res);  
-   $gnam = $snack->eat();  # hotdog.food.edible overridees food.edible, 
-                           #   so here $gnam equals "Perhaps"
+   $gnam = $snack->eat();  # hotdog.edible overridees food.edible, 
+                           # so here $gnam equals 0
 
-   $slurp = $snack->taste($res) # $slurp equals "Yuck!", unless 
-                                # this resource too was overridden 
+   @slurp = $snack->tastes()    # @slurp equals ("yuck!", "very") 
+                                # the resources were overridden 
                                 # by a subclass of HotDog , or
                                 # differently specified in 
                                 # "AppDefltFile"
 
-
-
-Note the different use of B<valbyclass>  and B<valbyname>  to access
-resources:
-
-=item B<valbyclass>
-
-Is used for the resources like "edible" in Food, i.e. resources which are
-defined by the current class in its defaults. This because a subclass of it
-(e.g. HotDog) might have overridden them (by having an entry for "food.edible"
-in its defaults. 
-
-Generally speaking, you should not use B<valbyclass> outside the B<new>
-(creation and initialization) method of a class.
-
-=item B<valbyname>
-
-Is used after the initialization, when all subclassed resources have been
-resolved nicely. In any case, its arguments is the complete resource name,
-with all its dots.
 
 =head1 SEE ALSO
 

@@ -40,5 +40,6 @@ package main;
 $res=new Resources;
 
 $bar = new Bar($res);
+$res=$res->edit();
 $res->view();
 
