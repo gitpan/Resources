@@ -388,7 +388,7 @@ sub new {
 
 sub DESTROY {
    my $res=shift;
-   Safe::DESTROY($res->{'_SAFE'});
+   Safe::DESTROY($res->{Safe});
 }
 
 
@@ -1207,7 +1207,7 @@ sub edit {
 
    if ($p = $ENV{RESEDITOR}) {
       $editor = $p;
-   } else ($p = $res->valbyname("resources.editor")) {
+   } elsif ($p = $res->valbyname("resources.editor")) {
       $editor = $p;
    } 
 

@@ -14,7 +14,7 @@ use ExtUtils::MakeMaker;
 &WriteMakefile(
 	       NAME     => "Resources",
 	       DISTNAME => "Resources",
-	       VERSION  => "1.03",
+	       VERSION  => "1.04",
 	       dist     => {COMPRESS => 'gzip', SUFFIX => 'gz'},
 	       test     => {TEST_TYPE => '.test.pl'},
 	      );
