@@ -1,5 +1,5 @@
 
-Resources-1.00b
+Resources-1.01b
 ===============
 
 
@@ -22,8 +22,8 @@ INSTALLATION
 To install in your standard site_local perl lib tree, just do
 the following
 
-	% tar zxvf Resources-1.00b.tar.gz
-	% cd Resources-1.00b
+	% tar zxvf Resources-1.01b.tar.gz
+	% cd Resources-1.01b
 	% perl Makefile.PL
 	% make install
 

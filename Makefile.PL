@@ -4,17 +4,17 @@
 # Filename: Makefile.PL
 # Author: Francesco Callari (franco@cim.mcgill.ca)
 # Created: Mon May 20 12:14:20 1996
-# Version: $Id: Makefile.PL,v 1.0 1996/05/20 19:28:04 franco Exp $
+# Version: $Id: Makefile.PL,v 1.0 1996/05/20 19:28:04 franco Exp franco $
 #
 
-$RCSID='$Id: Makefile.PL,v 1.0 1996/05/20 19:28:04 franco Exp $ ';
+$RCSID='$Id: Makefile.PL,v 1.0 1996/05/20 19:28:04 franco Exp franco $ ';
 
 use ExtUtils::MakeMaker;
 
 &WriteMakefile(
 	       NAME => "Resources",
 	       DISTNAME => "Resources",
-	       VERSION => "1.00",
+	       VERSION => "1.01",
 	      );
 
 

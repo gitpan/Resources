@@ -1,4 +1,4 @@
-# Copyright 1996 Francesco Callari, McGill University. See notice
+# Copyright 1995 Francesco Callari, McGill University. See notice
 # at end of this file.
 #
 # Filename: Resources.pm
@@ -109,11 +109,10 @@ themselves. The documentation itself is "dynamical" (as opposed to the static,
 pod-like variety) in that it follows a class hyerarchy and is suitable for
 interactive display and editing.
 
-A resource hash is just a hash of (B<$Name> => B<$Value>) or B<($Name> =>
-B<[$Value, $Doc])> things. Each hash key B<$Name> is a resource name as
-above. Each hash value is either just the resource $Value, or a reference to
-an anon array B<[$Value, $Doc]>, with B<$Doc> being the resource
-documentation.
+A resource hash is just a hash of B<($Name> => B<[$Value, $Doc])> things. Each
+hash key B<$Name> is a resource name as above. Each hash value is either just
+the resource $Value, or a reference to an anon array B<[$Value, $Doc]>, with
+B<$Doc> being the resource documentation.
 
 The resource $Name I<cannot> contain wildcard ('*') or colon (':') characters,
 nor start or end with a dot ('.'). Also, it must I<not> be prefixed
@@ -130,8 +129,8 @@ thereof). Boolean values must be specified as 1 or 0.
 
 The resource documentation is a just string of any length: it will be
 appropriately broken into lines for visualization purposes. It can also be
-missing for resources defined in base classes, in which case the base class
-documentation is used (see the B<merge> method below).
+missing, in which case a base class documentation is used (if any exists, see
+the B<merge> method below).
 
 The content of a resource hash is registered in a global Resource object using
 the B<merge> method.
@@ -488,13 +487,14 @@ sub merge {
 	 $res->error("merge", "Bad default resource name: $dname ");
 	 return 0;
       };
-      # Values must be scalar or 1/2-elements arrays, with a scalar 2nd
+      # Values must be 2-elements arrays, with a scalar 2nd
       # component (the doc)
-      ($vref = ref($dvalue)) && ($vref !~ /ARRAY/o) 
-	 && (($#{$dvalue}>1) || ref($dvalue->[1])) && do {
-	    $res->error("merge", "Bad default resource value: $dvalue ");
-	    return 0;
-	 };
+      unless(($vref = ref($dvalue)) && ($vref =~ /ARRAY/o) &&
+	     scalar(@{$dvalue})<=2 && !ref($dvalue->[1])      )  {
+	 $res->_error("merge", "Bad default resource value for ".
+		      "resource $dname : $dvalue");
+	 return 0;
+      };
 
       $doc=$val='';
 
@@ -502,15 +502,13 @@ sub merge {
       # if already defined by a subclass.
       $dname = $class . $dname;
       if (exists($res->{'_RES'}->{$dname})) {
-	 next defloop unless ($vref && ($doc=$dvalue->[$DOC]));
+	 next defloop unless ($doc=$dvalue->[$DOC]);
 	 $val = $res->{'_RES'}->{$dname}->[$VALUE];
-      } elsif ($vref) {
+      } else {
 	 $doc = $dvalue->[$DOC];
 	 $val = $dvalue->[$VALUE];
-      } else {
-	 $val = $dvalue;
-      }
-	
+      } 
+
       $res->put($dname, $val, $doc) ||
 	 ($res->_error("merge", "error on $dname: $dvalue") && return 0);
    }
@@ -1271,7 +1269,7 @@ sub _parse_ref {
 	    my $parspars = _parse_ref($val, $refref)
 	       || return undef;
 	    $parsed .= "'$nam' => $parspars, ";
-	 } elsif (isint($val) || isreal($val)) {
+	 } elsif (_isint($val) || _isreal($val)) {
 	    $parsed .= "'$nam' => $val, ";
 	 } else {
 	    $parsed .= "'$nam' => '$val', ";
@@ -1674,9 +1672,3 @@ AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 =cut
-
-
-
-
-
-
